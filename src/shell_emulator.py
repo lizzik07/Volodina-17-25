@@ -2,6 +2,7 @@ import argparse
 import os
 import socket
 import sys
+from vfs import VFS
 
 
 def get_prompt():
@@ -47,28 +48,23 @@ def run_script(script_path):
         with open(script_path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
-                # Пропускаем пустые строки и комментарии (начинаются с #)
                 if not line or line.startswith("#"):
                     continue
 
-                # Имитируем диалог: выводим приглашение и ввод
                 print(f"{get_prompt()}{line}")
                 parts = parse_input(line)
-
-                # Выполняем команду
                 should_exit = execute_command(parts)
                 if should_exit:
                     break
     except FileNotFoundError:
         print(
             f"Ошибка: файл скрипта '{script_path}' не найден.",
-            file=sys.stderr
+            file=sys.stderr,
         )
         sys.exit(1)
 
 
 def main():
-    # Настройка аргументов командной строки
     parser = argparse.ArgumentParser(description="Эмулятор оболочки ОС")
     parser.add_argument(
         "--vfs", default="vfs.zip", help="Путь к файлу VFS"
@@ -78,32 +74,18 @@ def main():
     )
     args = parser.parse_args()
 
-    # Отладочный вывод параметров при запуске
+    # 1. Отладочный вывод (ДОЛЖЕН БЫТЬ ПЕРВЫМ)
     print("--- Отладка параметров ---")
     print(f"VFS path: {args.vfs}")
     print(f"Script path: {args.script}")
     print("--------------------------")
 
-    if args.script:
-        # Режим выполнения скрипта
-        print(f"Выполнение скрипта {args.script}...")
-        run_script(args.script)
-    else:
-        # Интерактивный режим (REPL)
-        while True:
-            try:
-                user_input = input(get_prompt())
-            except (KeyboardInterrupt, EOFError):
-                print("\nВыход...")
-                break
-
-            if not user_input.strip():
-                continue
-
-            parts = parse_input(user_input)
-            if execute_command(parts):
-                break
-
+    # 2. Загрузка VFS (ДОЛЖНА БЫТЬ ВТОРОЙ)
+    vfs = VFS()
+    if args.vfs:
+        print(f"Загрузка VFS из {args.vfs}...")
+        vfs.load_from_csv(args.vfs)
+        print("VFS успешно загружена в память.")
 
 if __name__ == "__main__":
     main()
