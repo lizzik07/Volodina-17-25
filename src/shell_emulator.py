@@ -1,3 +1,4 @@
+import argparse
 import os
 import socket
 import sys
@@ -15,45 +16,93 @@ def get_prompt():
 
 
 def parse_input(user_input):
-    """Простой парсер: разделяет строку по пробелам."""
+    """Простой парсер."""
     return user_input.split()
 
 
-def cmd_ls(args):
-    """Заглушка для команды ls."""
-    print(f"Вызвана команда ls с аргументами: {args}")
+def execute_command(parts):
+    """Выполняет команду, возвращает True, если нужно выйти."""
+    if not parts:
+        return False
+
+    command = parts[0]
+    args = parts[1:]
+
+    if command == "exit":
+        print("Завершение работы эмулятора.")
+        return True
+    elif command == "ls":
+        print(f"Вызвана команда ls с аргументами: {args}")
+    elif command == "cd":
+        print(f"Вызвана команда cd с аргументами: {args}")
+    else:
+        print(f"Ошибка: неизвестная команда '{command}'")
+
+    return False
 
 
-def cmd_cd(args):
-    """Заглушка для команды cd."""
-    print(f"Вызвана команда cd с аргументами: {args}")
+def run_script(script_path):
+    """Читает и выполняет стартовый скрипт."""
+    try:
+        with open(script_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                # Пропускаем пустые строки и комментарии (начинаются с #)
+                if not line or line.startswith("#"):
+                    continue
+
+                # Имитируем диалог: выводим приглашение и ввод
+                print(f"{get_prompt()}{line}")
+                parts = parse_input(line)
+
+                # Выполняем команду
+                should_exit = execute_command(parts)
+                if should_exit:
+                    break
+    except FileNotFoundError:
+        print(
+            f"Ошибка: файл скрипта '{script_path}' не найден.",
+            file=sys.stderr
+        )
+        sys.exit(1)
 
 
 def main():
-    """Основной цикл REPL."""
-    while True:
-        try:
-            user_input = input(get_prompt())
-        except (KeyboardInterrupt, EOFError):
-            print("\nВыход...")
-            break
+    # Настройка аргументов командной строки
+    parser = argparse.ArgumentParser(description="Эмулятор оболочки ОС")
+    parser.add_argument(
+        "--vfs", default="vfs.zip", help="Путь к файлу VFS"
+    )
+    parser.add_argument(
+        "--script", default=None, help="Путь к стартовому скрипту"
+    )
+    args = parser.parse_args()
 
-        if not user_input.strip():
-            continue
+    # Отладочный вывод параметров при запуске
+    print("--- Отладка параметров ---")
+    print(f"VFS path: {args.vfs}")
+    print(f"Script path: {args.script}")
+    print("--------------------------")
 
-        parts = parse_input(user_input)
-        command = parts[0]
-        args = parts[1:]
+    if args.script:
+        # Режим выполнения скрипта
+        print(f"Выполнение скрипта {args.script}...")
+        run_script(args.script)
+    else:
+        # Интерактивный режим (REPL)
+        while True:
+            try:
+                user_input = input(get_prompt())
+            except (KeyboardInterrupt, EOFError):
+                print("\nВыход...")
+                break
 
-        if command == "exit":
-            print("Завершение работы эмулятора.")
-            break
-        elif command == "ls":
-            cmd_ls(args)
-        elif command == "cd":
-            cmd_cd(args)
-        else:
-            print(f"Ошибка: неизвестная команда '{command}'")
+            if not user_input.strip():
+                continue
+
+            parts = parse_input(user_input)
+            if execute_command(parts):
+                break
 
 
 if __name__ == "__main__":
